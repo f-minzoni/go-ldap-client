@@ -131,6 +131,11 @@ func (lc *LDAPClient) Authenticate(username, password string) (bool, map[string]
 
 // GetGroupsOfUser returns the group for a user.
 func (lc *LDAPClient) GetGroupsOfUser(username string) ([]string, error) {
+	return lc.Filter(fmt.Sprintf(lc.GroupFilter, username))
+}
+
+// Filter returns the found entries.
+func (lc *LDAPClient) Filter(filter string) ([]string, error) {
 	err := lc.Connect()
 	if err != nil {
 		return nil, err
@@ -139,17 +144,42 @@ func (lc *LDAPClient) GetGroupsOfUser(username string) ([]string, error) {
 	searchRequest := ldap.NewSearchRequest(
 		lc.Base,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
-		fmt.Sprintf(lc.GroupFilter, username),
-		[]string{"cn"}, // can it be something else than "cn"?
+		filter,
+		[]string{"cn"},
 		nil,
 	)
 	sr, err := lc.Conn.Search(searchRequest)
 	if err != nil {
 		return nil, err
 	}
-	groups := []string{}
+	result := []string{}
 	for _, entry := range sr.Entries {
-		groups = append(groups, entry.GetAttributeValue("cn"))
+		result = append(result, entry.GetAttributeValue("cn"))
 	}
-	return groups, nil
+	return result, nil
+}
+
+// AddUser persist a new user.
+func (lc *LDAPClient) AddUser(username string, ou string) error {
+	err := lc.Connect()
+	if err != nil {
+		return err
+	}
+
+	// First bind with an admin user
+	if lc.BindDN != "" && lc.BindPassword != "" {
+		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
+		if err != nil {
+			return err
+		}
+	}
+
+	userDN := fmt.Sprintf("cn=%s,ou=%s,%s", username, ou, lc.Base)
+	addRequest := ldap.NewAddRequest(userDN)
+
+	addRequest.Attribute("objectClass", []string{"inetOrgPerson"})
+	addRequest.Attribute("sn", []string{username})
+	addRequest.Attribute("uid", []string{username})
+
+	return lc.Conn.Add(addRequest)
 }

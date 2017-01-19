@@ -47,3 +47,48 @@ func ExampleLDAPClient_GetGroupsOfUser() {
 	}
 	log.Printf("Groups: %+v", groups)
 }
+
+// ExampleLDAPClient_GetUsers shows how to retrieve users
+func ExampleLDAPClient_GetUsers() {
+	client := &ldap.LDAPClient{
+		Base: "dc=example,dc=com",
+		Host: "ldap.example.com",
+		Port: 389,
+	}
+	defer client.Close()
+	users, err := client.Filter("(&(objectClass=organizationalPerson))")
+	if err != nil {
+		log.Fatalf("Error getting users: %+v", err)
+	}
+	log.Printf("Users: %+v", users)
+}
+
+// ExampleLDAPClient_GetGroups shows how to retrieve groups
+func ExampleLDAPClient_GetGroups() {
+	client := &ldap.LDAPClient{
+		Base: "dc=example,dc=com",
+		Host: "ldap.example.com",
+		Port: 389,
+	}
+	defer client.Close()
+	groups, err := client.Filter("(&(objectClass=posixGroup))")
+	if err != nil {
+		log.Fatalf("Error getting groups: %+v", err)
+	}
+
+	log.Printf("Groups: %+v", groups)
+}
+
+// ExampleLDAPClient_AddUser shows how to add a new user
+func ExampleLDAPClient_AddUser() {
+	client := &ldap.LDAPClient{
+		Base: "dc=example,dc=com",
+		Host: "ldap.example.com",
+		Port: 389,
+	}
+	defer client.Close()
+	err := client.AddUser("username", "people")
+	if err != nil {
+		log.Fatalf("Error adding user: %+v", err)
+	}
+}
