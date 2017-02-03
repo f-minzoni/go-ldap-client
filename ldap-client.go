@@ -131,11 +131,11 @@ func (lc *LDAPClient) Authenticate(username, password string) (bool, map[string]
 
 // GetGroupsOfUser returns the group for a user.
 func (lc *LDAPClient) GetGroupsOfUser(username string) ([]string, error) {
-	return lc.Filter(fmt.Sprintf(lc.GroupFilter, username))
+	return lc.Filter(fmt.Sprintf(lc.GroupFilter, username), []string{"cn"})
 }
 
 // Filter returns the found entries.
-func (lc *LDAPClient) Filter(filter string) ([]string, error) {
+func (lc *LDAPClient) Filter(filter string, attributes []string) ([]string, error) {
 	err := lc.Connect()
 	if err != nil {
 		return nil, err
@@ -145,7 +145,7 @@ func (lc *LDAPClient) Filter(filter string) ([]string, error) {
 		lc.Base,
 		ldap.ScopeWholeSubtree, ldap.NeverDerefAliases, 0, 0, false,
 		filter,
-		[]string{"cn"},
+		attributes,
 		nil,
 	)
 	sr, err := lc.Conn.Search(searchRequest)
@@ -154,7 +154,11 @@ func (lc *LDAPClient) Filter(filter string) ([]string, error) {
 	}
 	result := []string{}
 	for _, entry := range sr.Entries {
-		result = append(result, entry.GetAttributeValue("cn"))
+		for _, attr := range entry.Attributes {
+			for _, value := range attr.Values {
+				result = append(result, value)
+			}
+		}
 	}
 	return result, nil
 }
@@ -182,4 +186,31 @@ func (lc *LDAPClient) AddUser(username string, ou string) error {
 	addRequest.Attribute("uid", []string{username})
 
 	return lc.Conn.Add(addRequest)
+}
+
+// ChangeMembers updates the members of a given group.
+func (lc *LDAPClient) ChangeMembers(members []string, groupname, ou string) error {
+	err := lc.Connect()
+	if err != nil {
+		return err
+	}
+
+	// First bind with an admin user
+	if lc.BindDN != "" && lc.BindPassword != "" {
+		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
+		if err != nil {
+			return err
+		}
+	}
+
+	groupDN := fmt.Sprintf("cn=%s,ou=%s,%s", groupname, ou, lc.Base)
+	modifyRequest := ldap.NewModifyRequest(groupDN)
+	attr := ldap.PartialAttribute{
+		Type: "memberUid",
+		Vals: members,
+	}
+	attributes := []ldap.PartialAttribute{}
+	modifyRequest.ReplaceAttributes = append(attributes, attr)
+
+	return lc.Conn.Modify(modifyRequest)
 }

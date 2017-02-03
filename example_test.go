@@ -56,7 +56,7 @@ func ExampleLDAPClient_GetUsers() {
 		Port: 389,
 	}
 	defer client.Close()
-	users, err := client.Filter("(&(objectClass=organizationalPerson))")
+	users, err := client.Filter("(&(objectClass=organizationalPerson))", []string{"cn"})
 	if err != nil {
 		log.Fatalf("Error getting users: %+v", err)
 	}
@@ -71,7 +71,7 @@ func ExampleLDAPClient_GetGroups() {
 		Port: 389,
 	}
 	defer client.Close()
-	groups, err := client.Filter("(&(objectClass=posixGroup))")
+	groups, err := client.Filter("(&(objectClass=posixGroup))", []string{"cn"})
 	if err != nil {
 		log.Fatalf("Error getting groups: %+v", err)
 	}
