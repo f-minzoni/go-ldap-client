@@ -230,6 +230,18 @@ func (lc *LDAPClient) AddUserAccount(account AddUserAccount) error {
 
 // ChangeMembers updates the members of a given group.
 func (lc *LDAPClient) ChangeMembers(members []string, groupname, ou string) error {
+	DN := fmt.Sprintf("cn=%s,ou=%s,%s", groupname, ou, lc.Base)
+	return lc.ChangeAttribute(DN, "memberUid", members)
+}
+
+// ChangeDescription updates the description of a given OU.
+func (lc *LDAPClient) ChangeDescription(description, ou string) error {
+	DN := fmt.Sprintf("ou=%s,%s", ou, lc.Base)
+	return lc.ChangeAttribute(DN, "description", []string{description})
+}
+
+// ChangeAttribute updates the attribute values of a given DN.
+func (lc *LDAPClient) ChangeAttribute(DN, attribute string, values []string) error {
 	err := lc.Connect()
 	if err != nil {
 		return err
@@ -243,11 +255,10 @@ func (lc *LDAPClient) ChangeMembers(members []string, groupname, ou string) erro
 		}
 	}
 
-	groupDN := fmt.Sprintf("cn=%s,ou=%s,%s", groupname, ou, lc.Base)
-	modifyRequest := ldap.NewModifyRequest(groupDN)
+	modifyRequest := ldap.NewModifyRequest(DN)
 	attr := ldap.PartialAttribute{
-		Type: "memberUid",
-		Vals: members,
+		Type: attribute,
+		Vals: values,
 	}
 	attributes := []ldap.PartialAttribute{}
 	modifyRequest.ReplaceAttributes = append(attributes, attr)
