@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"gopkg.in/ldap.v2"
 )
@@ -24,6 +25,14 @@ type LDAPClient struct {
 	InsecureSkipVerify bool
 	UseSSL             bool
 	SkipTLS            bool
+}
+
+type AddUserAccount struct {
+	Username string
+	Password string
+	OU       string
+	UID      int
+	GID      int
 }
 
 // Connect connects to the ldap backend.
@@ -185,6 +194,36 @@ func (lc *LDAPClient) AddUser(username, password, ou string) error {
 	addRequest.Attribute("userPassword", []string{password})
 	addRequest.Attribute("sn", []string{username})
 	addRequest.Attribute("uid", []string{username})
+
+	return lc.Conn.Add(addRequest)
+}
+
+// AddUserAccount persist a new user account.
+func (lc *LDAPClient) AddUserAccount(account AddUserAccount) error {
+	err := lc.Connect()
+	if err != nil {
+		return err
+	}
+
+	// First bind with an admin user
+	if lc.BindDN != "" && lc.BindPassword != "" {
+		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
+		if err != nil {
+			return err
+		}
+	}
+
+	userDN := fmt.Sprintf("cn=%s,ou=%s,%s", account.Username, account.OU, lc.Base)
+	addRequest := ldap.NewAddRequest(userDN)
+
+	addRequest.Attribute("objectClass", []string{"inetOrgPerson", "posixAccount"})
+	addRequest.Attribute("uidNumber", []string{strconv.Itoa(account.UID)})
+	addRequest.Attribute("gidNumber", []string{strconv.Itoa(account.GID)})
+	addRequest.Attribute("userPassword", []string{account.Password})
+	addRequest.Attribute("homeDirectory", []string{"/home/" + account.Username})
+	addRequest.Attribute("loginShell", []string{"/bin/bash"})
+	addRequest.Attribute("sn", []string{account.Username})
+	addRequest.Attribute("uid", []string{account.Username})
 
 	return lc.Conn.Add(addRequest)
 }
