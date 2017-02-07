@@ -1,7 +1,10 @@
 package ldap_test
 
 import (
+	"crypto/md5"
 	"log"
+
+	"fmt"
 
 	"github.com/f-minzoni/go-ldap-client"
 )
@@ -87,7 +90,11 @@ func ExampleLDAPClient_AddUser() {
 		Port: 389,
 	}
 	defer client.Close()
-	err := client.AddUser("username", "people")
+
+	password := []byte("supersecret")
+	hash := md5.Sum(password)
+
+	err := client.AddUser("newuser", fmt.Sprintf("{MD5}%x", hash), "people")
 	if err != nil {
 		log.Fatalf("Error adding user: %+v", err)
 	}

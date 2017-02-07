@@ -164,7 +164,7 @@ func (lc *LDAPClient) Filter(filter string, attributes []string) ([]string, erro
 }
 
 // AddUser persist a new user.
-func (lc *LDAPClient) AddUser(username string, ou string) error {
+func (lc *LDAPClient) AddUser(username, password, ou string) error {
 	err := lc.Connect()
 	if err != nil {
 		return err
@@ -182,6 +182,7 @@ func (lc *LDAPClient) AddUser(username string, ou string) error {
 	addRequest := ldap.NewAddRequest(userDN)
 
 	addRequest.Attribute("objectClass", []string{"inetOrgPerson"})
+	addRequest.Attribute("userPassword", []string{password})
 	addRequest.Attribute("sn", []string{username})
 	addRequest.Attribute("uid", []string{username})
 
