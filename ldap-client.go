@@ -240,6 +240,12 @@ func (lc *LDAPClient) ChangeDescription(description, ou string) error {
 	return lc.ChangeAttribute(DN, "description", []string{description})
 }
 
+// ChangePassword updates the password of a given user.
+func (lc *LDAPClient) ChangePassword(password, username, ou string) error {
+	DN := fmt.Sprintf("cn=%s,ou=%s,%s", username, ou, lc.Base)
+	return lc.ChangeAttribute(DN, "userPassword", []string{password})
+}
+
 // ChangeAttribute updates the attribute values of a given DN.
 func (lc *LDAPClient) ChangeAttribute(DN, attribute string, values []string) error {
 	err := lc.Connect()
