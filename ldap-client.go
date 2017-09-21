@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"gopkg.in/ldap.v2"
 )
@@ -143,6 +144,19 @@ func (lc *LDAPClient) GetGroupsOfUser(username string) ([]string, error) {
 	return lc.Filter(fmt.Sprintf(lc.GroupFilter, username), []string{"cn"})
 }
 
+// GetAllGroups returns the group for a user.
+func (lc *LDAPClient) GetAllGroups() ([]string, error) {
+	filter := "(objectClass=posixGroup)"
+	return lc.Filter(filter, []string{"cn"})
+}
+
+// GetOUDescription returns the group for a user.
+func (lc *LDAPClient) GetOUDescription(name string) (string, error) {
+	filter := "(&(objectClass=organizationalUnit)(ou=" + name + "))"
+	list, err := lc.Filter(filter, []string{"description"})
+	return strings.Join(list, ""), err
+}
+
 // Filter returns the found entries.
 func (lc *LDAPClient) Filter(filter string, attributes []string) ([]string, error) {
 	err := lc.Connect()
@@ -170,6 +184,30 @@ func (lc *LDAPClient) Filter(filter string, attributes []string) ([]string, erro
 		}
 	}
 	return result, nil
+}
+
+// AddGroup persist a new group.
+func (lc *LDAPClient) AddGroup(groupName, gidNumber, ou string) error {
+	err := lc.Connect()
+	if err != nil {
+		return err
+	}
+
+	// First bind with an admin user
+	if lc.BindDN != "" && lc.BindPassword != "" {
+		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
+		if err != nil {
+			return err
+		}
+	}
+
+	userDN := fmt.Sprintf("cn=%s,ou=%s,%s", groupName, ou, lc.Base)
+	addRequest := ldap.NewAddRequest(userDN)
+
+	addRequest.Attribute("objectClass", []string{"posixGroup"})
+	addRequest.Attribute("gidNumber", []string{gidNumber})
+
+	return lc.Conn.Add(addRequest)
 }
 
 // AddUser persist a new user.
