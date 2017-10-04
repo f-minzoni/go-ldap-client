@@ -186,6 +186,27 @@ func (lc *LDAPClient) Filter(filter string, attributes []string) ([]string, erro
 	return result, nil
 }
 
+// DelGroup delete an existing group.
+func (lc *LDAPClient) DelGroup(groupName, ou string) error {
+	err := lc.Connect()
+	if err != nil {
+		return err
+	}
+
+	// First bind with an admin user
+	if lc.BindDN != "" && lc.BindPassword != "" {
+		err := lc.Conn.Bind(lc.BindDN, lc.BindPassword)
+		if err != nil {
+			return err
+		}
+	}
+
+	groupDN := fmt.Sprintf("cn=%s,ou=%s,%s", groupName, ou, lc.Base)
+	delRequest := ldap.NewDelRequest(groupDN, []ldap.Control{})
+
+	return lc.Conn.Del(delRequest)
+}
+
 // AddGroup persist a new group.
 func (lc *LDAPClient) AddGroup(groupName, gidNumber, ou string) error {
 	err := lc.Connect()
